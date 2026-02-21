@@ -8,16 +8,8 @@ const authMiddleware = require('../middleware/auth');
 // Apply auth middleware to all routes in this router
 router.use(authMiddleware);
 
-// Multer config for local file uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, '..', 'uploads'));
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
-});
+// Multer config for serverless environment (disk storage is read-only)
+const storage = multer.memoryStorage();
 
 const upload = multer({
     storage,
@@ -121,7 +113,9 @@ router.post('/:id/media', upload.single('file'), async (req, res) => {
         const location = await Location.findOne({ _id: req.params.id, user: req.user.id });
         if (!location) return res.status(404).json({ error: 'Location not found' });
 
-        const fileUrl = `/uploads/${req.file.filename}`;
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const fileName = `${uniqueSuffix}${path.extname(req.file.originalname)}`;
+        const fileUrl = `/uploads/${fileName}`; // Note: Files are only stored in memory during the request. External storage (like AWS S3 or Cloudinary) is recommended for persistence.
         const fileType = req.file.mimetype.startsWith('video') ? 'video' : 'photo';
 
         location.media.push({
