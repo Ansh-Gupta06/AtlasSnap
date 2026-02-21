@@ -10,12 +10,27 @@ let conn = null;
 module.exports.handler = async (event, context) => {
     // context.callbackWaitsForEmptyEventLoop = false;
 
-    if (conn == null) {
-        conn = await mongoose.connect(MONGODB_URI, {
-            serverSelectionTimeoutMS: 5000,
-        });
+    if (!MONGODB_URI) {
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: 'MONGODB_URI environment variable is missing' }),
+        };
     }
 
-    const handler = serverless(app);
-    return handler(event, context);
+    try {
+        if (conn == null) {
+            conn = await mongoose.connect(MONGODB_URI, {
+                serverSelectionTimeoutMS: 5000,
+            });
+        }
+
+        const handler = serverless(app);
+        return await handler(event, context);
+    } catch (error) {
+        console.error('Lambda Error:', error);
+        return {
+            statusCode: 502,
+            body: JSON.stringify({ error: 'Internal Server Error', details: error.message }),
+        };
+    }
 };

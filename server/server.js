@@ -13,9 +13,9 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/travel-journal';
 
-// Ensure uploads directory exists
+// Ensure uploads directory exists (only if not on Netlify/Serverless)
 const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
+if (!process.env.NETLIFY && !fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
