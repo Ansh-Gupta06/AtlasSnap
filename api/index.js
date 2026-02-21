@@ -13,9 +13,9 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/travel-journal';
 
-// Ensure uploads directory exists (only if not on Netlify/Serverless)
+// Ensure uploads directory exists (only if not on Vercel/Netlify/Serverless)
 const uploadsDir = path.join(__dirname, 'uploads');
-if (!process.env.NETLIFY && !fs.existsSync(uploadsDir)) {
+if (!process.env.VERCEL && !process.env.NETLIFY && !fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
@@ -32,7 +32,7 @@ app.use((req, res, next) => {
 
 app.use('/uploads', express.static(uploadsDir));
 
-// Routes - Support both /api/ (local) and / (Netlify redirect splat)
+// Routes - Support both /api/ and root paths for serverless flexibility
 app.use(['/api/auth', '/auth'], authRoutes);
 app.use(['/api/locations', '/locations'], locationRoutes);
 

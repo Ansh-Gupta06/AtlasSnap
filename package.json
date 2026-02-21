@@ -1,7 +1,7 @@
 {
   "scripts": {
-    "build": "npm install && cd client && npm install && npm run build",
-    "server": "node server/server.js",
+    "build": "cd client && npm install && npm run build",
+    "server": "node api/index.js",
     "client": "cd client && npm run dev",
     "dev": "concurrently \"npm run server\" \"npm run client\""
   },

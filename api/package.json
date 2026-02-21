@@ -2,7 +2,7 @@
   "name": "travel-journal-server",
   "version": "1.0.0",
   "description": "Travel Journal Scrapbook API Server",
-  "main": "server.js",
+  "main": "index.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
