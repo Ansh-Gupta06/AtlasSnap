@@ -1,6 +1,8 @@
-const express = require('express');
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
+import authMiddleware from '../middleware/auth.js';
+
 const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_fallback_secret_key';
@@ -41,8 +43,6 @@ router.post('/login', async (req, res) => {
     }
 });
 
-const authMiddleware = require('../middleware/auth');
-
 // Get user data
 router.get('/me', authMiddleware, async (req, res) => {
     try {
@@ -54,4 +54,4 @@ router.get('/me', authMiddleware, async (req, res) => {
     }
 });
 
-module.exports = router;
+export default router;

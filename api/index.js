@@ -1,13 +1,16 @@
-require('dotenv').config();
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const path = require('path');
-const fs = require('fs');
+import 'dotenv/config';
+import express from 'express';
+import mongoose from 'mongoose';
+import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
-const locationRoutes = require('./routes/locations');
-const authRoutes = require('./routes/auth');
-const authMiddleware = require('./middleware/auth');
+import locationRoutes from './routes/locations.js';
+import authRoutes from './routes/auth.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -42,22 +45,20 @@ app.get('/api/health', (req, res) => {
 });
 
 // Export for serverless
-module.exports = app;
+export default app;
 
-// Connect to MongoDB & start server only if not importing (standard node run)
-if (require.main === module) {
-    mongoose.connect(MONGODB_URI)
-        .then(() => {
-            console.log('✅ Connected to MongoDB');
-            app.listen(PORT, () => {
-                console.log(`🚀 Server running on http://localhost:${PORT}`);
-            });
-        })
-        .catch(err => {
-            console.error('❌ MongoDB connection error:', err.message);
-            console.log('⚠️  Starting server without MongoDB...');
-            app.listen(PORT, () => {
-                console.log(`🚀 Server running on http://localhost:${PORT} (no database)`);
-            });
+// Connect to MongoDB & start server (for local dev / direct node execution)
+mongoose.connect(MONGODB_URI)
+    .then(() => {
+        console.log('✅ Connected to MongoDB');
+        app.listen(PORT, () => {
+            console.log(`🚀 Server running on http://localhost:${PORT}`);
         });
-}
+    })
+    .catch(err => {
+        console.error('❌ MongoDB connection error:', err.message);
+        console.log('⚠️  Starting server without MongoDB...');
+        app.listen(PORT, () => {
+            console.log(`🚀 Server running on http://localhost:${PORT} (no database)`);
+        });
+    });

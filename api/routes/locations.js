@@ -1,9 +1,10 @@
-const express = require('express');
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import Location from '../models/Location.js';
+import authMiddleware from '../middleware/auth.js';
+
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
-const Location = require('../models/Location');
-const authMiddleware = require('../middleware/auth');
 
 // Apply auth middleware to all routes in this router
 router.use(authMiddleware);
@@ -177,4 +178,4 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
-module.exports = router;
+export default router;

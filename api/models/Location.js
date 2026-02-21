@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const MediaSchema = new mongoose.Schema({
   url: { type: String, required: true },
@@ -22,4 +22,4 @@ const LocationSchema = new mongoose.Schema({
 LocationSchema.index({ name: 'text' });
 LocationSchema.index({ 'coordinates.lat': 1, 'coordinates.lng': 1 });
 
-module.exports = mongoose.model('Location', LocationSchema);
+export default mongoose.model('Location', LocationSchema);
