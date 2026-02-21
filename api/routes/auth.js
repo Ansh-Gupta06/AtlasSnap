@@ -5,7 +5,7 @@ import authMiddleware from '../middleware/auth.js';
 
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_fallback_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET || 'travel_journal_secret_2026_safe_key';
 
 // Register
 router.post('/register', async (req, res) => {

@@ -14,7 +14,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/travel-journal';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://ansh:ansh@cluster0.r84hyiw.mongodb.net/travel-journal?retryWrites=true&w=majority&appName=Cluster0';
 
 // Ensure uploads directory exists (only if not on Vercel/Netlify/Serverless)
 const uploadsDir = path.join(__dirname, 'uploads');
