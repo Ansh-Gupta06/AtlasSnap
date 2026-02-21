@@ -8,6 +8,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 let conn = null;
 
 module.exports.handler = async (event, context) => {
+    console.log(`📡 Function called: ${event.httpMethod} ${event.path}`);
     // context.callbackWaitsForEmptyEventLoop = false;
 
     if (!MONGODB_URI) {
