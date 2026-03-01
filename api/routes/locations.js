@@ -1,8 +1,10 @@
 import express from 'express';
+import multer from 'multer';
 import Location from '../models/Location.js';
 import authMiddleware from '../middleware/auth.js';
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 router.use(authMiddleware);
 
@@ -85,18 +87,22 @@ router.post('/', async (req, res) => {
     }
 });
 
-router.post('/:id/media', async (req, res) => {
+router.post('/:id/media', upload.single('file'), async (req, res) => {
     try {
         const location = await Location.findOne({ _id: req.params.id, user: req.user.id });
         if (!location) return res.status(404).json({ error: 'Location not found' });
 
-        const { url, type, caption } = req.body;
-        if (!url) return res.status(400).json({ error: 'url is required' });
+        const formData = new FormData();
+        formData.append('image', new Blob([req.file.buffer], { type: req.file.mimetype }), req.file.originalname);
+
+        const uploadRes = await fetch('https://sodhi.vercel.app/api/upload', { method: 'POST', body: formData });
+        if (!uploadRes.ok) throw new Error(`Sodhi upload failed: ${uploadRes.status}`);
+        const { url } = await uploadRes.json();
 
         location.media.push({
             url,
-            type: type || 'photo',
-            caption: caption || ''
+            type: req.file.mimetype.startsWith('video') ? 'video' : 'photo',
+            caption: req.body.caption || ''
         });
 
         await location.save();
