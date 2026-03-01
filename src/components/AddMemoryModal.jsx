@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { saveMediaUrl } from '../api';
+import { uploadMedia } from '../api';
 
 export default function AddMemoryModal({ location, onClose, onSuccess }) {
     const [files, setFiles] = useState([]);
@@ -38,20 +38,10 @@ export default function AddMemoryModal({ location, onClose, onSuccess }) {
         setUploading(true);
         try {
             for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const fileType = file.type.startsWith('video') ? 'video' : 'photo';
-
                 const formData = new FormData();
-                formData.append('image', file);
-                const uploadRes = await fetch('https://sodhi.vercel.app/api/upload', {
-                    method: 'POST',
-                    body: formData,
-                });
-                if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`);
-                const { url } = await uploadRes.json();
-
-                await saveMediaUrl(location._id, url, fileType, i === 0 ? caption : '');
-
+                formData.append('file', files[i]);
+                formData.append('caption', i === 0 ? caption : '');
+                await uploadMedia(location._id, formData);
                 setProgress(Math.round(((i + 1) / files.length) * 100));
             }
             onSuccess();
