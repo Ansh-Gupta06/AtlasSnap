@@ -22,8 +22,10 @@ export const getLocation = (id) => api.get(`/locations/${id}`).then(res => res.d
 export const createLocation = (data) =>
     api.post('/locations', data).then(res => res.data);
 
-export const saveMediaUrl = (locationId, url, type, caption) =>
-    api.post(`/locations/${locationId}/media`, { url, type, caption }).then(res => res.data);
+export const uploadMedia = (locationId, formData) =>
+    api.post(`/locations/${locationId}/media`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(res => res.data);
 
 export const editMedia = (locationId, mediaId, data) =>
     api.put(`/locations/${locationId}/media/${mediaId}`, data).then(res => res.data);
