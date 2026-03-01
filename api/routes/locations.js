@@ -1,30 +1,11 @@
 import express from 'express';
-import multer from 'multer';
-import path from 'path';
 import Location from '../models/Location.js';
 import authMiddleware from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Apply auth middleware to all routes in this router
 router.use(authMiddleware);
 
-// Multer config for serverless environment (disk storage is read-only)
-const storage = multer.memoryStorage();
-
-const upload = multer({
-    storage,
-    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
-    fileFilter: (req, file, cb) => {
-        const allowed = /jpeg|jpg|png|gif|webp|mp4|webm|mov/;
-        const ext = allowed.test(path.extname(file.originalname).toLowerCase());
-        const mime = allowed.test(file.mimetype);
-        if (ext || mime) cb(null, true);
-        else cb(new Error('Only image and video files are allowed'));
-    }
-});
-
-// GET /api/locations — List only current user's locations
 router.get('/', async (req, res) => {
     try {
         const locations = await Location.find({ user: req.user.id }).sort({ createdAt: -1 });
@@ -34,7 +15,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET /api/locations/search?name=Paris
 router.get('/search', async (req, res) => {
     try {
         const { name } = req.query;
@@ -49,7 +29,6 @@ router.get('/search', async (req, res) => {
     }
 });
 
-// GET /api/locations/timeline — Get all media across current user's locations, sorted by date
 router.get('/timeline', async (req, res) => {
     try {
         const locations = await Location.find({ user: req.user.id, 'media.0': { $exists: true } });
@@ -77,7 +56,6 @@ router.get('/timeline', async (req, res) => {
     }
 });
 
-// GET /api/locations/:id — Get single location (if it belongs to user)
 router.get('/:id', async (req, res) => {
     try {
         const location = await Location.findOne({ _id: req.params.id, user: req.user.id });
@@ -88,7 +66,6 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST /api/locations — Create a new location for the current user
 router.post('/', async (req, res) => {
     try {
         const { name, coordinates, country } = req.body;
@@ -108,21 +85,18 @@ router.post('/', async (req, res) => {
     }
 });
 
-// POST /api/locations/:id/media — Upload media
-router.post('/:id/media', upload.single('file'), async (req, res) => {
+router.post('/:id/media', async (req, res) => {
     try {
         const location = await Location.findOne({ _id: req.params.id, user: req.user.id });
         if (!location) return res.status(404).json({ error: 'Location not found' });
 
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const fileName = `${uniqueSuffix}${path.extname(req.file.originalname)}`;
-        const fileUrl = `/uploads/${fileName}`; // Note: Files are only stored in memory during the request. External storage (like AWS S3 or Cloudinary) is recommended for persistence.
-        const fileType = req.file.mimetype.startsWith('video') ? 'video' : 'photo';
+        const { url, type, caption } = req.body;
+        if (!url) return res.status(400).json({ error: 'url is required' });
 
         location.media.push({
-            url: fileUrl,
-            type: fileType,
-            caption: req.body.caption || ''
+            url,
+            type: type || 'photo',
+            caption: caption || ''
         });
 
         await location.save();
@@ -132,7 +106,6 @@ router.post('/:id/media', upload.single('file'), async (req, res) => {
     }
 });
 
-// PUT /api/locations/:id/media/:mediaId — Edit caption
 router.put('/:id/media/:mediaId', async (req, res) => {
     try {
         const location = await Location.findOne({ _id: req.params.id, user: req.user.id });
@@ -150,7 +123,6 @@ router.put('/:id/media/:mediaId', async (req, res) => {
     }
 });
 
-// DELETE /api/locations/:id/media/:mediaId
 router.delete('/:id/media/:mediaId', async (req, res) => {
     try {
         const location = await Location.findOne({ _id: req.params.id, user: req.user.id });
@@ -167,7 +139,6 @@ router.delete('/:id/media/:mediaId', async (req, res) => {
     }
 });
 
-// DELETE /api/locations/:id — Delete a location
 router.delete('/:id', async (req, res) => {
     try {
         const result = await Location.findOneAndDelete({ _id: req.params.id, user: req.user.id });
