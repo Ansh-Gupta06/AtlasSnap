@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const MediaSchema = new mongoose.Schema({
   url: { type: String, required: true },
+  publicId: { type: String, default: '' },
   type: { type: String, enum: ['photo', 'video'], required: true },
   caption: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }

@@ -3,13 +3,14 @@ import multer from 'multer';
 import path from 'path';
 import Location from '../models/Location.js';
 import authMiddleware from '../middleware/auth.js';
+import cloudinary from '../config/cloudinary.js';
 
 const router = express.Router();
 
 // Apply auth middleware to all routes in this router
 router.use(authMiddleware);
 
-// Multer config for serverless environment (disk storage is read-only)
+// Multer config — memory storage for serverless (buffer uploaded to Cloudinary)
 const storage = multer.memoryStorage();
 
 const upload = multer({
@@ -108,19 +109,37 @@ router.post('/', async (req, res) => {
     }
 });
 
-// POST /api/locations/:id/media — Upload media
+// POST /api/locations/:id/media — Upload media to Cloudinary
 router.post('/:id/media', upload.single('file'), async (req, res) => {
     try {
         const location = await Location.findOne({ _id: req.params.id, user: req.user.id });
         if (!location) return res.status(404).json({ error: 'Location not found' });
 
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const fileName = `${uniqueSuffix}${path.extname(req.file.originalname)}`;
-        const fileUrl = `/uploads/${fileName}`; // Note: Files are only stored in memory during the request. External storage (like AWS S3 or Cloudinary) is recommended for persistence.
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
         const fileType = req.file.mimetype.startsWith('video') ? 'video' : 'photo';
+        const resourceType = fileType === 'video' ? 'video' : 'image';
+
+        // Upload buffer to Cloudinary
+        const result = await new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+                {
+                    folder: 'atlassnap',
+                    resource_type: resourceType,
+                },
+                (error, result) => {
+                    if (error) reject(error);
+                    else resolve(result);
+                }
+            );
+            stream.end(req.file.buffer);
+        });
 
         location.media.push({
-            url: fileUrl,
+            url: result.secure_url,
+            publicId: result.public_id,
             type: fileType,
             caption: req.body.caption || ''
         });
@@ -128,6 +147,7 @@ router.post('/:id/media', upload.single('file'), async (req, res) => {
         await location.save();
         res.status(201).json(location);
     } catch (err) {
+        console.error('Upload error:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -150,7 +170,7 @@ router.put('/:id/media/:mediaId', async (req, res) => {
     }
 });
 
-// DELETE /api/locations/:id/media/:mediaId
+// DELETE /api/locations/:id/media/:mediaId — Delete media from DB and Cloudinary
 router.delete('/:id/media/:mediaId', async (req, res) => {
     try {
         const location = await Location.findOne({ _id: req.params.id, user: req.user.id });
@@ -158,6 +178,17 @@ router.delete('/:id/media/:mediaId', async (req, res) => {
 
         const mediaItem = location.media.id(req.params.mediaId);
         if (mediaItem) {
+            // Delete from Cloudinary if publicId exists
+            if (mediaItem.publicId) {
+                try {
+                    const resourceType = mediaItem.type === 'video' ? 'video' : 'image';
+                    await cloudinary.uploader.destroy(mediaItem.publicId, {
+                        resource_type: resourceType,
+                    });
+                } catch (cloudErr) {
+                    console.error('Cloudinary delete error (non-fatal):', cloudErr.message);
+                }
+            }
             mediaItem.deleteOne();
             await location.save();
         }
@@ -167,11 +198,27 @@ router.delete('/:id/media/:mediaId', async (req, res) => {
     }
 });
 
-// DELETE /api/locations/:id — Delete a location
+// DELETE /api/locations/:id — Delete a location and all its Cloudinary media
 router.delete('/:id', async (req, res) => {
     try {
-        const result = await Location.findOneAndDelete({ _id: req.params.id, user: req.user.id });
-        if (!result) return res.status(404).json({ error: 'Location not found' });
+        const location = await Location.findOne({ _id: req.params.id, user: req.user.id });
+        if (!location) return res.status(404).json({ error: 'Location not found' });
+
+        // Clean up all Cloudinary media for this location
+        for (const media of location.media) {
+            if (media.publicId) {
+                try {
+                    const resourceType = media.type === 'video' ? 'video' : 'image';
+                    await cloudinary.uploader.destroy(media.publicId, {
+                        resource_type: resourceType,
+                    });
+                } catch (cloudErr) {
+                    console.error('Cloudinary delete error (non-fatal):', cloudErr.message);
+                }
+            }
+        }
+
+        await Location.findOneAndDelete({ _id: req.params.id, user: req.user.id });
         res.json({ message: 'Location deleted' });
     } catch (err) {
         res.status(500).json({ error: err.message });

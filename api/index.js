@@ -2,25 +2,16 @@ import 'dotenv/config';
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
 
 import locationRoutes from './routes/locations.js';
 import authRoutes from './routes/auth.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Validate required environment variables
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) throw new Error('MONGODB_URI environment variable is required');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://ansh:ansh@cluster0.r84hyiw.mongodb.net/travel-journal?retryWrites=true&w=majority&appName=Cluster0';
-
-// Ensure uploads directory exists (only if not on Vercel/Netlify/Serverless)
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!process.env.VERCEL && !process.env.NETLIFY && !fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-}
 
 // Middleware
 app.use(cors());
@@ -33,7 +24,25 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use('/uploads', express.static(uploadsDir));
+// Cache the MongoDB connection promise to reuse across serverless invocations
+let cachedConnection = null;
+
+async function connectDB() {
+    if (cachedConnection) return cachedConnection;
+    cachedConnection = mongoose.connect(MONGODB_URI);
+    return cachedConnection;
+}
+
+// Ensure DB is connected before handling any request
+app.use(async (req, res, next) => {
+    try {
+        await connectDB();
+        next();
+    } catch (err) {
+        console.error('❌ MongoDB connection error:', err.message);
+        res.status(500).json({ error: 'Database connection failed' });
+    }
+});
 
 // Routes - Support both /api/ and root paths for serverless flexibility
 app.use(['/api/auth', '/auth'], authRoutes);
@@ -44,21 +53,20 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Export for serverless
+// Export for Vercel serverless
 export default app;
 
-// Connect to MongoDB & start server (for local dev / direct node execution)
-mongoose.connect(MONGODB_URI)
-    .then(() => {
-        console.log('✅ Connected to MongoDB');
-        app.listen(PORT, () => {
-            console.log(`🚀 Server running on http://localhost:${PORT}`);
+// Start server only in local development (Vercel handles this via serverless)
+if (!process.env.VERCEL) {
+    connectDB()
+        .then(() => {
+            console.log('✅ Connected to MongoDB');
+            app.listen(PORT, () => {
+                console.log(`🚀 Server running on http://localhost:${PORT}`);
+            });
+        })
+        .catch(err => {
+            console.error('❌ MongoDB connection error:', err.message);
+            process.exit(1);
         });
-    })
-    .catch(err => {
-        console.error('❌ MongoDB connection error:', err.message);
-        console.log('⚠️  Starting server without MongoDB...');
-        app.listen(PORT, () => {
-            console.log(`🚀 Server running on http://localhost:${PORT} (no database)`);
-        });
-    });
+}
