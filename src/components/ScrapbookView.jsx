@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { deleteMedia } from '../api';
 import EditMediaModal from './EditMediaModal';
@@ -18,6 +18,13 @@ function getRandomItem(arr) {
 
 export default function ScrapbookView({ location, onClose, onAddMemory, onRefresh }) {
     const [editingMedia, setEditingMedia] = useState(null);
+    const [lightboxUrl, setLightboxUrl] = useState(null);
+
+    useEffect(() => {
+        const handleKey = (e) => { if (e.key === 'Escape') setLightboxUrl(null); };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, []);
 
     const handleDelete = async (mediaId) => {
         if (!confirm('Remove this memory?')) return;
@@ -156,8 +163,9 @@ export default function ScrapbookView({ location, onClose, onAddMemory, onRefres
                                                     <img
                                                         src={item.url}
                                                         alt={item.caption || 'Travel memory'}
-                                                        className="rounded-sm"
+                                                        className="rounded-sm cursor-zoom-in"
                                                         loading="lazy"
+                                                        onClick={() => setLightboxUrl(item.url)}
                                                     />
                                                 )}
 
@@ -211,6 +219,36 @@ export default function ScrapbookView({ location, onClose, onAddMemory, onRefres
                         onRefresh();
                     }}
                 />
+            )}
+
+            {/* Lightbox */}
+            {lightboxUrl && (
+                <motion.div
+                    className="fixed inset-0 z-[9999] flex items-center justify-center"
+                    style={{ background: 'rgba(0,0,0,0.9)' }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setLightboxUrl(null)}
+                >
+                    <motion.img
+                        src={lightboxUrl}
+                        alt="Full view"
+                        className="max-w-[92vw] max-h-[92vh] rounded-lg shadow-2xl object-contain"
+                        initial={{ scale: 0.85, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ type: 'spring', damping: 22, stiffness: 280 }}
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                    <button
+                        onClick={() => setLightboxUrl(null)}
+                        className="absolute top-4 right-4 text-white text-3xl font-bold w-10 h-10
+                            flex items-center justify-center rounded-full bg-black bg-opacity-50
+                            hover:bg-opacity-80 transition-all"
+                    >
+                        ✕
+                    </button>
+                </motion.div>
             )}
         </>
     );
